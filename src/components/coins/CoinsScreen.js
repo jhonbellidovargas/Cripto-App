@@ -1,58 +1,81 @@
 import React from 'react';
-import {View, Text, Pressable, StyleSheet, FlatList, Image} from 'react-native';
+import {
+  View,
+  ActivityIndicator,
+  Pressable,
+  FlatList,
+  StyleSheet,
+} from 'react-native';
 import Http from '../../libs/http';
+import CoinsItem from './CoinsItem';
+import CoinsSearch from './CoinsSearch';
+import Colors from '../../res/colors';
 
 class CoinsScreen extends React.Component {
   state = {
-    movies: [],
+    coins: [],
+    allCoins: [],
+    loading: false,
   };
-  componentDidMount = async () => {
+
+  componentDidMount = () => {
+    this.getCoins();
+  };
+
+  getCoins = async () => {
+    this.setState({loading: true});
     const res = await Http.instance.get(
-      'https://api.themoviedb.org/3/movie/popular?api_key=19fdfa04ac548b85e48bb87a45900d1d&language=en-US&page=1',
+      'https://api.coinlore.net/api/tickers/',
     );
-    this.setState({movies: res.results});
+    this.setState({coins: res.data, loading: false, allCoins: res.data});
   };
-  handlePress = () => {
-    console.log('Pressed');
-    this.props.navigation.navigate('CoinDetail');
+
+  onPress = coin => {
+    this.props.navigation.navigate('CoinDetail', {coin});
+  };
+
+  handleSearch = query => {
+    const {allCoins} = this.state;
+    this.setState({loading: true});
+    const coinsFil = allCoins.filter(coin => {
+      return (
+        coin.name.toLowerCase().includes(query.toLowerCase()) ||
+        coin.symbol.toLowerCase().includes(query.toLowerCase())
+      );
+    });
+    this.setState({coins: coinsFil, loading: false});
   };
 
   render() {
-    const {movies} = this.state;
+    const {coins, loading} = this.state;
     return (
       <View style={styles.container}>
-        <FlatList
-          data={movies}
-          renderItem={({item}) => (
-            <Pressable onPress={this.handlePress}>
-              <View style={styles.item}>
-                <Image
-                  style={styles.image}
-                  source={{
-                    uri: `https://image.tmdb.org/t/p/w500/${item.poster_path}`,
-                  }}
-                />
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.price}>{item.vote_average}</Text>
-              </View>
-            </Pressable>
-          )}
-          keyExtractor={item => item.id}
-        />
+        <CoinsSearch onChange={this.handleSearch} />
+        {loading ? (
+          <ActivityIndicator style={styles.loader} size="large" color="#fff" />
+        ) : (
+          <FlatList
+            data={coins}
+            renderItem={({item}) => (
+              <CoinsItem item={item} onPress={() => this.onPress(item)} />
+            )}
+            keyExtractor={item => item.id}
+          />
+        )}
       </View>
     );
   }
 }
+
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.charade,
   },
   titleText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: 'red',
+    color: '#000',
   },
   btn: {
     backgroundColor: 'blue',
@@ -60,44 +83,13 @@ const styles = StyleSheet.create({
     marginTop: 20,
     borderRadius: 5,
   },
-  item: {
-    flexDirection: 'row',
-    padding: 10,
-    marginVertical: 10,
-    backgroundColor: '#fff',
-    borderRadius: 5,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.8,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  image: {
-    width: 100,
-    height: 150,
-    borderRadius: 5,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000',
-    marginLeft: 10,
-    width: 150,
-  },
-  description: {
-    fontSize: 14,
-    color: '#000',
-    marginLeft: 10,
-  },
-  price: {
-    fontSize: 14,
-    color: '#000',
-    marginLeft: 10,
-    display: 'flex',
-  },
   btnText: {
-    color: 'white',
-    textAlign: 'center',
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  loader: {
+    marginTop: 20,
   },
 });
 
